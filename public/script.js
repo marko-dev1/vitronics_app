@@ -260,31 +260,7 @@ function resetPaymentSelections() {
     });
 }
 
-// Add product to cart (searches both products and deals)
-// function addToCart(productId) {
-//     const product = [...products, ...deals].find(p => p.id == productId);
-    
-//     if (product) {
-//         const existingItem = cart.find(item => item.id == productId);
-        
-//         if (existingItem) {
-//             existingItem.quantity += 1;
-//         } else {
-//             cart.push({
-//                 id: product.id,
-//                 name: product.name,
-//                 price: product.price,
-//                 oldPrice: product.old_price || product.oldPrice,
-//                 image: product.image_url || product.image,
-//                 quantity: 1
-//             });
-//         }
-        
-//         updateCart();
-//         showCartNotification(`${product.name} added to cart`);
-//         cartModal.style.display = 'block';
-//     }
-//  }
+
 
 function addToCart(productId) {
     const product = [...products, ...deals].find(p => p.id == productId);
@@ -478,3 +454,7 @@ function updateCart() {
         
         // Initialize the store when DOM is loaded
        document.addEventListener('DOMContentLoaded', initStore);
+
+
+
+

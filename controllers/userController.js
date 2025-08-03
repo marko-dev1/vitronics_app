@@ -1,33 +1,30 @@
-const User = require('../models/User');
+// controllers/userController.js
+const User = require('../models/user');
 
-const getUserProfile = async (req, res) => {
-    try {
-        const user = await User.findById(req.userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.json(user);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
+// Make sure these are proper async functions
+exports.register = async (req, res) => {
+  try {
+    // Registration logic
+    res.status(201).json({ message: 'User registered' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
-const updateUserProfile = async (req, res) => {
-    try {
-        const { name, phone, address } = req.body;
-        await db.query(
-            'UPDATE users SET name = ?, phone = ?, address = ? WHERE id = ?',
-            [name, phone, address, req.userId]
-        );
-        res.json({ message: 'Profile updated' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
+exports.login = async (req, res) => {
+  try {
+    // Login logic
+    res.json({ message: 'Logged in' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
-module.exports = {
-    getUserProfile,
-    updateUserProfile
+exports.logout = async (req, res) => {
+  try {
+    // Logout logic
+    res.json({ message: 'Logged out' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };

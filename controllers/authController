@@ -1,115 +1,133 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); 
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../models/user');
 require('dotenv').config();
 
-    const register = async (req, res) => {
-    try {
-        const { name, email, phone, password, address } = req.body;
-        
-        // Check if user exists
-        const existingUser = await User.findByEmail(email);
-        if (existingUser) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
-        
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-        
-        // Create user
-        const userId = await User.create({
-            name,
-            email,
-            phone,
-            password: hashedPassword,
-            address
-        });
-        
-        // ✅ Set session
-        req.session.email = email;
-        req.session.user = {
-            id: userId,
-            name,
-            email,
-            phone,
-            address
-        };
-        
-        
-        res.status(201).json({ message: 'User registered successfully', userId });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+// Registration handler
+const register = async (req, res) => {
+  try {
+    const { name, email, phone, password, address } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
     }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email already in use' });
+    }
+
+    // Generate salt and hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create the user record
+    const newUser = await User.create({
+      name,
+      email,
+      phone,
+      password: hashedPassword,
+      address
+    });
+
+    // Set up session (if using session middleware)
+    req.session.email = email;
+    req.session.user = {
+      id: newUser.id,
+      name,
+      email,
+      phone,
+      address
     };
 
-    const login = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        
-        // Check if user exists
-        const user = await User.findByEmail(email);
-        if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
-        
-        // Check password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
-        
-        // Create JWT token
-        const token = jwt.sign(
-            { userId: user.id },
-            process.env.JWT_SECRET,
-            { expiresIn: '1h' }
-        );
-        
-        // res.json({ 
-        //     token,
-        //     user: {
-        //         id: user.id,
-        //         name: user.name,
-        //         email: user.email,
-        //         phone: user.phone,
-        //         address: user.address,
-                
-        //     }
-        // });
-
-          req.session.email = user.email;
-        req.session.user = {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            address: user.address,
-        };
-        
-        res.json({ 
-            message: 'Login successful',
-            token,
-            user: req.session.user
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
+    res.status(201).json({ message: 'User registered successfully', userId: newUser.id });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Server error during registration' });
+  }
 };
 
+// Login handler
+const login = async (req, res) => {
+  try {
+    console.log('Login request body:', req.body); // Log incoming data
+
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      console.log('Missing credentials');
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    // Find user by email (include password for verification)
+    const user = await User.findOne({ 
+      where: { email: email.trim() },
+      attributes: ['id', 'email', 'password', 'name', 'phone', 'address']
+    });
+    console.log('Found user:', user ? user.id : 'null');
+
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Compare the provided password with the hashed password stored
+    console.log('Comparing password with hash:', user.password.substring(0, 10) + '...');
+    const isMatch = await bcrypt.compare(password.trim(), user.password);
+    console.log('Password match result:', isMatch);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Generate a JWT
+    console.log('Generating JWT with secret:', process.env.JWT_SECRET ? 'exists' : 'missing');
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Set session data (if using session middleware)
+    req.session.email = user.email;
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      address: user.address
+    };
+
+    // Set JWT as HTTP-only cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: false,    // change to true in production with HTTPS
+      sameSite: 'Lax',  // adjust based on your frontend requirements
+      maxAge: 3600000   // cookie expires in 1 hour
+    });
+
+    // Respond with success (you can include user info in the response if needed)
+    res.json({ message: 'Login successful' });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
+  }
+};
+
+// Logout handler
 const logout = (req, res) => {
   req.session.destroy(err => {
-    if (err) return res.status(500).json({ message: 'Logout failed' });
-    res.clearCookie('connect.sid');
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ message: 'Logout failed' });
+    }
+    
+    // Optionally clear the JWT cookie as well
+    res.clearCookie('token');
     res.json({ message: 'Logged out successfully' });
   });
 };
 
-
-
-
 module.exports = { register, login, logout };
-
-
-// module.exports = { register, login };

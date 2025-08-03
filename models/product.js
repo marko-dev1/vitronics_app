@@ -1,36 +1,101 @@
-const db = require('../config/db');
 
-class Product {
-    static async findAll() {
-        const [rows] = await db.query('SELECT * FROM products');
-        return rows;
-    }
 
-    static async findById(id) {
-        const [rows] = await db.query('SELECT * FROM products WHERE id = ?', [id]);
-        return rows[0];
-    }
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/db');
 
-    static async create(productData) {
-        const { name, description, category, price, old_price, image_url, stock_quantity } = productData;
-        const [result] = await db.query(
-            'INSERT INTO products (name, description, category, price, old_price, image_url, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [name, description, category, price, old_price || null, image_url, stock_quantity]
-        );
-        return result.insertId;
-    }
+class Product extends Model {
+  static async ensureSchema() {
+    // Check and sync any changes in schema
+    await Product.sync(); // Uses model definition to sync table
+  }
 
-    static async update(id, productData) {
-        const { name, description, category, price, old_price, image_url, stock_quantity } = productData;
-        await db.query(
-            'UPDATE products SET name = ?, description = ?, category = ?, price = ?, old_price = ?, image_url = ?, stock_quantity = ? WHERE id = ?',
-            [name, description, category, price, old_price || null, image_url, stock_quantity, id]
-        );
-    }
+  static async findAllProducts() {
+    await this.ensureSchema();
+    return await Product.findAll();
+  }
 
-    static async delete(id) {
-        await db.query('DELETE FROM products WHERE id = ?', [id]);
+  static async findByProductId(id) {
+    await this.ensureSchema();
+    return await Product.findByPk(id);
+  }
+
+  static async createProduct(productData) {
+    await this.ensureSchema();
+    return await Product.create({
+      name: productData.name,
+      description: productData.description || null,
+      category: productData.category || 'uncategorized',
+      price: productData.price,
+      old_price: productData.old_price || null,
+      image_url: productData.image_url || null,
+      stock_quantity: productData.stock_quantity || 0
+    });
+  }
+
+  static async updateProduct(id, productData) {
+    await this.ensureSchema();
+    await Product.update(
+      {
+        name: productData.name,
+        description: productData.description || null,
+        category: productData.category || 'uncategorized',
+        price: productData.price,
+        old_price: productData.old_price || null,
+        image_url: productData.image_url || null,
+        stock_quantity: productData.stock_quantity || 0,
+        updated_at: new Date()
+      },
+      { where: { id } }
+    );
+    return await Product.findByPk(id);
+  }
+
+  static async deleteProduct(id) {
+    await this.ensureSchema();
+    await Product.destroy({ where: { id } });
+    return { deleted: true, id };
+  }
+
+  static async findByCategory(category) {
+    await this.ensureSchema();
+    return await Product.findAll({ where: { category } });
+  }
+
+  static async updateStock(id, quantityChange) {
+    await this.ensureSchema();
+    const product = await Product.findByPk(id);
+    if (product) {
+      product.stock_quantity += quantityChange;
+      await product.save();
+      return product;
     }
+    return null;
+  }
 }
+
+// Define schema
+Product.init(
+  {
+    name: { type: DataTypes.STRING, allowNull: false },
+    description: DataTypes.TEXT,
+    category: { type: DataTypes.STRING, defaultValue: 'uncategorized' },
+    price: { type: DataTypes.FLOAT, allowNull: false },
+    old_price: DataTypes.FLOAT,
+    image_url: DataTypes.STRING,
+    stock_quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
+    updated_at: { type: DataTypes.DATE }
+  },
+  {
+    sequelize,
+    modelName: 'Product',
+    tableName: 'products',
+    timestamps: false // or true if you want Sequelize to auto-manage createdAt/updatedAt
+  }
+);
+
+// Initialize
+Product.ensureSchema().catch((err) => {
+  console.error('Failed to initialize product schema:', err);
+});
 
 module.exports = Product;

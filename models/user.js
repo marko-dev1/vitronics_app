@@ -1,24 +1,38 @@
-const db = require('../config/db');
+const bcrypt = require('bcryptjs');
 
-class User {
-    static async findByEmail(email) {
-        const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-        return rows[0];
-    }
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/db'); // Adjust path as needed
 
-    static async create(userData) {
-        const { name, email, phone, password, address } = userData;
-        const [result] = await db.query(
-            'INSERT INTO users (name, email, phone, password, address) VALUES (?, ?, ?, ?, ?)',
-            [name, email, phone, password, address]
-        );
-        return result.insertId;
-    }
-
-    static async findById(id) {
-        const [rows] = await db.query('SELECT id, name, email, phone, address FROM users WHERE id = ?', [id]);
-        return rows[0];
-    }
-}
+const User = sequelize.define('User', {
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
+  },
+  phone: {
+    type: DataTypes.STRING
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  address: {
+    type: DataTypes.STRING
+  }
+}, {
+  timestamps: false,
+  // hooks: {
+  //   beforeCreate: async (user) => {
+  //     if (user.password) {
+  //       const salt = await bcrypt.genSalt(10);
+  //       user.password = await bcrypt.hash(user.password, salt);
+  //     }
+  //   }
+  // }
+});
 
 module.exports = User;

@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VitronicsHub Kenya - Premium Phone Accessories</title>
-   <link rel="stylesheet" href="/styles.css">
-   <link rel="stylesheet" href="/cart.css">
-    <link rel="stylesheet" href="/cartUI.css">
-    <link rel="stylesheet" href="/humberger.css">
+   <link rel="stylesheet" href="./styles.css">
+   <link rel="stylesheet" href="./cart.css">
+    <link rel="stylesheet" href="./cartUI.css">
+    <link rel="stylesheet" href="./humberger.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -43,6 +43,9 @@
       <a href="#" class="cart-icon" id="cartIcon">
         <i class="fas fa-shopping-cart"></i>
         <span class="cart-count" id="cartCount">0</span>
+
+
+        
       </a>
     </div>
   </div>
@@ -255,15 +258,39 @@
 
    <script>
     // Check login status and update UI
-  fetch('/api/auth/email', {
+//   fetch('/api/auth/email', {
+//     credentials: 'include'
+//   })
+//   .then(async res => {
+//     const data = await res.json();
+//     if (res.ok && data.email) {
+//       document.getElementById('username-text').innerText = `${data.email}`;
+//       document.getElementById('registerLink').style.display = 'none';
+//       document.getElementById('loginLink').style.display = 'none';
+//     } else {
+//       document.getElementById('username-text').innerText = 'Guest';
+//     }
+//   })
+//   .catch(() => {
+//     document.getElementById('username-text').innerText = 'Guest';
+//   });
+window.addEventListener('DOMContentLoaded', () => {
+  fetch('/api/auth/session', {
     credentials: 'include'
   })
   .then(async res => {
     const data = await res.json();
-    if (res.ok && data.email) {
-      document.getElementById('username-text').innerText = `${data.email}`;
-      document.getElementById('registerLink').style.display = 'none';
-      document.getElementById('loginLink').style.display = 'none';
+    
+    if (res.ok && data.authenticated && data.user?.email) {
+      const email = data.user.email;
+      document.getElementById('username-text').innerText = `Hello, ${email}`;
+      
+      // Hide login/register links
+    //   document.getElementById('registerLink')?.classList.add('hidden');
+    //   document.getElementById('loginLink')?.classList.add('hidden');
+
+        document.getElementById('registerLink').style.display = 'none';
+        document.getElementById('loginLink').style.display = 'none';
     } else {
       document.getElementById('username-text').innerText = 'Guest';
     }
@@ -271,6 +298,7 @@
   .catch(() => {
     document.getElementById('username-text').innerText = 'Guest';
   });
+});
 
   // Logout route
   document.getElementById('greeting').addEventListener('click', () => {
@@ -299,9 +327,9 @@
 
 </script>
 
-<script src="/script.js"></script>
-<script src="/carousel.js"></script>
-<script src="/cart.js"></script>
+<script src="./script.js"></script>
+<script src="./carousel.js"></script>
+<script src="./cart.js"></script>
  
 
 <div id="toast" class="toast"></div>
