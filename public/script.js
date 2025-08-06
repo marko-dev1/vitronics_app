@@ -36,7 +36,7 @@ async function initStore() {
     try {
         await fetchProducts();
         setupEventListeners();
-        // updateCart();
+        updateCart();
     } catch (error) {
         console.error('Store initialization failed:', error);
         showError(productRow, 'Failed to load products');
