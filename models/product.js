@@ -89,7 +89,7 @@ Product.init(
     sequelize,
     modelName: 'Product',
     tableName: 'products',
-    timestamps: false // or true if you want Sequelize to auto-manage createdAt/updatedAt
+    timestamps: false
   }
 );
 

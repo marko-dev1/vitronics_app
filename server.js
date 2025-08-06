@@ -1,5 +1,4 @@
 require('dotenv').config(); // Load environment variables first
-
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
@@ -7,6 +6,7 @@ const cors = require('cors');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const cookieParser = require('cookie-parser');
+
 // DB config
 const db = require('./config/db');
 
@@ -16,13 +16,14 @@ const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const userRoutes = require('./routes/userRoutes');
+const cartRoutes = require('./routes/cartRoutes');
 
 const app = express();
 
 // Constants
 const SESSION_SECRET = process.env.SESSION_SECRET || 'fallback_secret';
 
-// CORS config (update origin to match your frontend)
+// CORS config 
 app.use(cookieParser());
 app.use(cors({
   origin: 'http://localhost:3000', // Replace with your actual frontend origin
@@ -62,11 +63,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Route guards
 function requireLogin(req, res, next) {
   if (req.session && req.session.user) {
-    next();
+    next();z
   } else {
     res.status(401).json({ error: 'Unauthorized - Please login' });
   }

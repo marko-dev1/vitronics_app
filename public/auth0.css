@@ -24,7 +24,7 @@ form{
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
     width: 100%;
-    max-width: 600px;
+    max-width: 500px;
     margin: 2rem auto;
   
     box-sizing: border-box;
@@ -162,18 +162,19 @@ button a li{
 
 
 
-@keyframes scroll-text {
+/* @keyframes scroll-text {
   from {
     transform: translateX(0%);
   }
   to {
     transform: translateX(-100%);
   }
-}
+} */
  @media (max-width: 600px) {
   .header {
     width: 90%;
     padding: 20px;
+    
   }
 
   .header h1 {

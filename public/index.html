@@ -78,7 +78,7 @@
                     </div>
                 </div>
             </div>
-             <!-- Slide 2 duplicate-->
+             <!-- Slide 2 merged for simplicity duplicate-->
              
             
             <!-- Slide 3 -->
@@ -92,15 +92,15 @@
                     </div>
                 </div>
             </div>
-             <!-- Slide 3 duplicate-->
+             <!-- Slide 3   merged for simplicityduplicate-->
            
 
-                <!-- Slide 4-->
+                <!-- Slide  4  merged for simplicity-->
             
-         <!-- Slide 5-->
-          
-             <!-- Slide 6-->
-         
+         <!-- Slide 5  merged for simplicity-->
+
+             <!-- Slide 6  merged for simplicity-->
+
              <!-- Slide 7-->
              <div class="carousel-slide">
                 <img src="/img/TWS_JBL1.png" alt="AirPods">
@@ -163,7 +163,7 @@
             <a href="#"><i class="fab fa-instagram"></i></a>
             <a href="#"><i class="fab fa-twitter"></i></a>
         </div>
-        <!-- <p>&copy; 2025 VitronicsHub Kenya. All rights reserved.</p> -->
+       
          <p>&copy; <span id="year"></span> VitronicsHub Kenya. All rights reserved.</p>
 
 <script>
@@ -257,23 +257,7 @@
     </div>
 
    <script>
-    // Check login status and update UI
-//   fetch('/api/auth/email', {
-//     credentials: 'include'
-//   })
-//   .then(async res => {
-//     const data = await res.json();
-//     if (res.ok && data.email) {
-//       document.getElementById('username-text').innerText = `${data.email}`;
-//       document.getElementById('registerLink').style.display = 'none';
-//       document.getElementById('loginLink').style.display = 'none';
-//     } else {
-//       document.getElementById('username-text').innerText = 'Guest';
-//     }
-//   })
-//   .catch(() => {
-//     document.getElementById('username-text').innerText = 'Guest';
-//   });
+   
 window.addEventListener('DOMContentLoaded', () => {
   fetch('/api/auth/session', {
     credentials: 'include'
@@ -285,9 +269,6 @@ window.addEventListener('DOMContentLoaded', () => {
       const email = data.user.email;
       document.getElementById('username-text').innerText = `Hello, ${email}`;
       
-      // Hide login/register links
-    //   document.getElementById('registerLink')?.classList.add('hidden');
-    //   document.getElementById('loginLink')?.classList.add('hidden');
 
         document.getElementById('registerLink').style.display = 'none';
         document.getElementById('loginLink').style.display = 'none';

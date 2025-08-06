@@ -262,8 +262,11 @@ function resetPaymentSelections() {
 
 
 
+
+
 function addToCart(productId) {
-    const product = [...products, ...deals].find(p => p.id == productId);
+    // First check deals (discounted products), then regular products
+    const product = [...deals, ...products].find(p => p.id == productId);
     
     if (product) {
         const existingItem = cart.find(item => item.id == productId);
@@ -274,17 +277,23 @@ function addToCart(productId) {
             cart.push({
                 id: product.id,
                 name: product.name,
-                price: product.price,
-                oldPrice: product.old_price || product.oldPrice,
-                image: product.image_url || product.image,
+                price: product.price, // This will use the discounted price for deals
+                image: product.image_url || product.image || '/img/placeholder.jpg',
                 quantity: 1
             });
         }
-
+        
         updateCart();
         showToast(`${product.name} added to cart`);
+    } else {
+        console.error(`Product with ID ${productId} not found`);
     }
 }
+
+        // updateCart();
+        // showToast(`${product.name} added to cart`);
+    
+
 
    function showToast(message) {
     const toast = document.createElement('div');
@@ -316,22 +325,27 @@ function showCartNotification(message) {
     }, 2000);
 }
 
-// Update cart and persist to localStorage
+
 function updateCart() {
     // Save to localStorage
     localStorage.setItem('cart', JSON.stringify(cart));
     
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
     cartCount.textContent = totalItems;
     
     if (cart.length > 0) {
         emptyCartMessage.style.display = 'none';
-        cartItems.innerHTML = cart.map(item => `
+        cartItems.innerHTML = cart.map(item => {
+            // Safely get the price with a default value
+            const price = item.price ;
+            return `
             <div class="cart-item" data-id="${item.id}">
-                <img src="${item.image}" alt="${item.name}" class="cart-item-img">
+                <img src="${item.image || '/img/placeholder.jpg'}" 
+                     alt="${item.name || 'Product'}" 
+                     class="cart-item-img">
                 <div class="cart-item-details">
-                    <div class="cart-item-title">${item.name}</div>
-                    <div class="cart-item-price">Ksh ${item.price.toLocaleString()}</div>
+                    <div class="cart-item-title">${item.name || 'Unknown Product'}</div>
+                    <div class="cart-item-price">Ksh ${price.toLocaleString()}</div>
                     <div class="cart-item-quantity">
                         <button class="quantity-btn decrease">-</button>
                         <input type="number" value="${item.quantity}" min="1" class="quantity-input">
@@ -340,14 +354,15 @@ function updateCart() {
                     </div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     } else {
         emptyCartMessage.style.display = 'block';
         cartItems.innerHTML = '';
         resetPaymentOptions();
     }
     
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = cart.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
     cartTotal.textContent = `Ksh ${total.toLocaleString()}`;
 }
         // Process M-Pesa Payment
@@ -355,8 +370,8 @@ function updateCart() {
             const phone = document.getElementById('mpesaPhone').value;
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             
-            if (!phone || phone.length < 12) {
-                mpesaFeedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid M-Pesa phone number (e.g. 254712345678)';
+            if (!phone || phone.length < 10) {
+                mpesaFeedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid M-Pesa phone number (e.g. 0712345678)';
                 mpesaFeedback.className = 'payment-feedback payment-error';
                 mpesaFeedback.style.display = 'block';
                 return;
@@ -443,8 +458,229 @@ function updateCart() {
             console.log(`Order completed via ${paymentMethod} for Ksh ${total}`);
             
             // Show confirmation
-            alert(`Order confirmed!\n\nTotal: Ksh ${total.toLocaleString()}\nPayment Method: ${paymentMethod}\n\nThank you for shopping with us!`);
-            
+ 
+// Calculate delivery fee
+const deliveryFee = paymentMethod === 'Cash on Delivery' ? 100 : 0;
+const finalTotal = total + deliveryFee;
+
+// Order confirmation alert with delivery fee info
+
+  // Show order confirmation alert
+  function showOrderConfirmation(orderData) {
+    alert(`Order confirmed!\n\nSubtotal: Ksh ${orderData.subtotal.toLocaleString()}\n${
+      orderData.deliveryFee > 0 ? 'Delivery Fee: Ksh 100\n' : ''
+    }Total: Ksh ${orderData.finalTotal.toLocaleString()}\nPayment Method: ${
+      orderData.paymentMethod
+    }\n\nThank you for shopping with us!`);
+  }
+
+  // Send order to backend
+  async function sendOrderToBackend(orderData) {
+    try {
+      console.log('Sending order to backend:', orderData);
+      
+      // In a real implementation, this would be a fetch call to your backend API
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to send order:', error);
+      throw error;
+    }
+  }
+
+  // Reset checkout UI
+  function resetCheckoutUI() {
+    cart = [];
+    updateCart();
+    if (cartModal) cartModal.style.display = 'none';
+    resetPaymentOptions();
+  }
+
+  // Generate receipt
+  function generateReceipt(order) {
+    const receiptWindow = window.open('', '_blank', 'width=800,height=900');
+    
+    receiptWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Sales Receipt</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            padding: 20px;
+            color: #333;
+            margin: 0;
+          }
+          .container {
+            background: #fff;
+            padding: 20px;
+            max-width: 700px;
+            margin: auto;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+          }
+          .top-header,.details{
+            border-bottom: 1px solid gray;
+          }
+          hr {
+            border: none;
+            border-top: 2px dotted #333;
+            margin: 20px 0;
+          }
+          h1, h2, h3, h4, h5 {
+            margin: 5px 0;
+            text-align: center;
+          }
+          .details {
+            margin-top: 20px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+          }
+          th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 14px;
+          }
+          .fee-row {
+            font-weight: bold;
+          }
+          .total-row {
+            font-weight: bold;
+            font-size: 1.1em;
+            background-color: #f5f5f5;
+          }
+          h4 {
+            text-align: center;
+            color: #d9534f;
+            margin: 20px 0;
+          }
+          @media print {
+            body {
+              background: #fff;
+              color: #000;
+            }
+            .container {
+              box-shadow: none;
+              margin: 0;
+              width: 100%;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <header class="header">
+            <div class="top-header">
+              <h1>VITRONICS</h1>
+              <h5>VITRONICS SYSTEMS</h5>
+              <h5>NAIROBI</h5>
+              <h2>Official Sales Receipt</h2>
+            </div>
+          </header>
+
+          <section class="info">
+            <div class="details">
+              <p>Date : ${new Date().toLocaleString()}</p>
+              <p>Order # : ${order.id}</p>
+              <hr>
+              <div class="product-info">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Qty</th>
+                      <th>Unit Price</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${order.items.map(item => `
+                      <tr>
+                        <td>${item.name}</td>
+                        <td>${item.quantity}</td>
+                        <td>Ksh ${item.price.toLocaleString()}</td>
+                        <td>Ksh ${(item.price * item.quantity).toLocaleString()}</td>
+                      </tr>
+                    `).join('')}
+                    ${order.deliveryFee > 0 ? `
+                      <tr class="fee-row">
+                        <td colspan="3">Cash on Delivery Fee</td>
+                        <td>Ksh ${order.deliveryFee.toLocaleString()}</td>
+                      </tr>
+                    ` : ''}
+                    <tr class="total-row">
+                      <td colspan="3">GRAND TOTAL</td>
+                      <td>Ksh ${order.finalTotal.toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p>Payment Method: ${order.paymentMethod}</p>
+              <p>Delivery Address: ${order.deliveryAddress}</p>
+            </div>
+          </section>
+
+          <p>Thank You for your business</p>
+          <h4>GOODS ONCE SOLD ARE NOT ACCEPTED</h4>
+        </div>
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    
+    receiptWindow.document.close();
+  }
+
+
+// Prepare order data
+const order = {
+  id: "ORD" + Date.now().toString().slice(-6),
+  paymentMethod: paymentMethod,
+  total: total,
+  deliveryFee: deliveryFee,
+  finalTotal: finalTotal,
+  items: cart.map(item => ({
+    name: item.name,
+    quantity: item.quantity,
+    price: item.price
+  }))
+};
+
+// Generate receipt
+generateReceipt(order);
+
+// Reset cart and close modal
+
+cart = [];
+updateCart();
+cartModal.style.display = 'none';
+resetPaymentOptions();
             // Reset cart and close modal
             cart = [];
             updateCart();
