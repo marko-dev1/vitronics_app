@@ -290,10 +290,6 @@ function addToCart(productId) {
     }
 }
 
-        // updateCart();
-        // showToast(`${product.name} added to cart`);
-    
-
 
    function showToast(message) {
     const toast = document.createElement('div');
@@ -364,6 +360,87 @@ function updateCart() {
     
     const total = cart.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
     cartTotal.textContent = `Ksh ${total.toLocaleString()}`;
+}
+
+
+
+
+// Authentication helper functions for saving to cart
+function getCurrentUser() {
+  return JSON.parse(localStorage.getItem('user')) || null;
+}
+
+function getCurrentUserId() {
+  const user = getCurrentUser();
+  return user?.id || null;
+}
+
+// initialize cart on page load from database or localStorage
+async function updateCart() {
+  try {
+    // Save to localStorage (for immediate UI updates)
+    localStorage.setItem('cart', JSON.stringify(cart));
+    
+    // Save to SQLite database (for persistence)
+    const userId = getCurrentUserId(); // Implement this function to get logged-in user ID
+    
+    if (userId) {
+      const response = await fetch('/api/cart', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          userId,
+          cartData: cart
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save cart to database');
+      }
+    }
+    
+    // Update UI
+    const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    cartCount.textContent = totalItems;
+    
+    if (cart.length > 0) {
+      emptyCartMessage.style.display = 'none';
+      cartItems.innerHTML = cart.map(item => {
+        const price = item.price || 0;
+        return `
+        <div class="cart-item" data-id="${item.id}">
+          <img src="${item.image || '/img/placeholder.jpg'}" 
+               alt="${item.name || 'Product'}" 
+               class="cart-item-img">
+          <div class="cart-item-details">
+            <div class="cart-item-title">${item.name || 'Unknown Product'}</div>
+            <div class="cart-item-price">Ksh ${price.toLocaleString()}</div>
+            <div class="cart-item-quantity">
+              <button class="quantity-btn decrease">-</button>
+              <input type="number" value="${item.quantity}" min="1" class="quantity-input">
+              <button class="quantity-btn increase">+</button>
+              <button class="remove-item"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        </div>
+        `;
+      }).join('');
+    } else {
+      emptyCartMessage.style.display = 'block';
+      cartItems.innerHTML = '';
+      resetPaymentOptions();
+    }
+    
+    const total = cart.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
+    cartTotal.textContent = `Ksh ${total.toLocaleString()}`;
+    
+  } catch (error) {
+    console.error('Error updating cart:', error);
+    showToast('Failed to save cart', 'error');
+  }
 }
         // Process M-Pesa Payment
         function processMpesaPayment() {
@@ -636,7 +713,9 @@ const finalTotal = total + deliveryFee;
                 </table>
               </div>
               <p>Payment Method: ${order.paymentMethod}</p>
-              <p>Delivery Address: ${order.deliveryAddress}</p>
+              <p>Customer: ${order.user.phone}</p>
+              
+              <p>Delivery Address: ${order.user.deliveryAddress}</p>
             </div>
           </section>
 
@@ -668,7 +747,10 @@ const order = {
   items: cart.map(item => ({
     name: item.name,
     quantity: item.quantity,
-    price: item.price
+    price: item.price,
+    phone: phone,
+    deliveryAddress: deliveryAddress,
+
   }))
 };
 
