@@ -1,0 +1,12 @@
+{
+  "build": {
+    "builder": "nixpacks",
+    "config": {
+      "setup": [
+        "apt-get update",
+        "apt-get install -y python3 build-essential",
+        "export npm_config_build_from_source=true"
+      ]
+    }
+  }
+}
