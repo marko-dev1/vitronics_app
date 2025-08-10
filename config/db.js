@@ -10,13 +10,13 @@
 
 
 const { Sequelize } = require('sequelize');
-const path = require('path');
+// const path = require('path');
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: process.env.NODE_ENV === 'production' 
-    ? '/data/database.sqlite'  // Railway persistent storage path
-    : path.join(__dirname, 'database.sqlite'),
+    ? '/database.sqlite'
+    : './database.sqlite',
   logging: console.log
 });
 module.exports = sequelize;

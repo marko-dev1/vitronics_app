@@ -260,10 +260,6 @@ function resetPaymentSelections() {
     });
 }
 
-
-
-
-
 function addToCart(productId) {
     // First check deals (discounted products), then regular products
     const product = [...deals, ...products].find(p => p.id == productId);
@@ -290,8 +286,7 @@ function addToCart(productId) {
     }
 }
 
-
-   function showToast(message) {
+function showToast(message) {
     const toast = document.createElement('div');
     toast.className = 'cart-toast';
     toast.textContent = message;
@@ -307,21 +302,6 @@ function addToCart(productId) {
     }, 3000);
 }
 
-
-// Show cart notification
-function showCartNotification(message) {
-    const notification = document.createElement('div');
-    notification.className = 'cart-notification';
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 500);
-    }, 2000);
-}
-
-
 function updateCart() {
     // Save to localStorage
     localStorage.setItem('cart', JSON.stringify(cart));
@@ -332,8 +312,7 @@ function updateCart() {
     if (cart.length > 0) {
         emptyCartMessage.style.display = 'none';
         cartItems.innerHTML = cart.map(item => {
-            // Safely get the price with a default value
-            const price = item.price ;
+            const price = item.price || 0;
             return `
             <div class="cart-item" data-id="${item.id}">
                 <img src="${item.image || '/img/placeholder.jpg'}" 
@@ -362,231 +341,141 @@ function updateCart() {
     cartTotal.textContent = `Ksh ${total.toLocaleString()}`;
 }
 
-
-
-
-// Authentication helper functions for saving to cart
-function getCurrentUser() {
-  return JSON.parse(localStorage.getItem('user')) || null;
-}
-
-function getCurrentUserId() {
-  const user = getCurrentUser();
-  return user?.id || null;
-}
-
-// initialize cart on page load from database or localStorage
-async function updateCart() {
-  try {
-    // Save to localStorage (for immediate UI updates)
-    localStorage.setItem('cart', JSON.stringify(cart));
+// Process M-Pesa Payment
+function processMpesaPayment() {
+    const phone = document.getElementById('mpesaPhone').value;
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
-    // Save to SQLite database (for persistence)
-    const userId = getCurrentUserId(); // Implement this function to get logged-in user ID
-    
-    if (userId) {
-      const response = await fetch('/api/cart', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          userId,
-          cartData: cart
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save cart to database');
-      }
+    if (!phone || phone.length < 10) {
+        mpesaFeedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid M-Pesa phone number (e.g. 0712345678)';
+        mpesaFeedback.className = 'payment-feedback payment-error';
+        mpesaFeedback.style.display = 'block';
+        return;
     }
     
-    // Update UI
-    const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
-    cartCount.textContent = totalItems;
+    mpesaFeedback.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initiating M-Pesa payment request...';
+    mpesaFeedback.className = 'payment-feedback';
+    mpesaFeedback.style.display = 'block';
     
-    if (cart.length > 0) {
-      emptyCartMessage.style.display = 'none';
-      cartItems.innerHTML = cart.map(item => {
-        const price = item.price || 0;
-        return `
-        <div class="cart-item" data-id="${item.id}">
-          <img src="${item.image || '/img/placeholder.jpg'}" 
-               alt="${item.name || 'Product'}" 
-               class="cart-item-img">
-          <div class="cart-item-details">
-            <div class="cart-item-title">${item.name || 'Unknown Product'}</div>
-            <div class="cart-item-price">Ksh ${price.toLocaleString()}</div>
-            <div class="cart-item-quantity">
-              <button class="quantity-btn decrease">-</button>
-              <input type="number" value="${item.quantity}" min="1" class="quantity-input">
-              <button class="quantity-btn increase">+</button>
-              <button class="remove-item"><i class="fas fa-trash"></i></button>
-            </div>
-          </div>
-        </div>
-        `;
-      }).join('');
-    } else {
-      emptyCartMessage.style.display = 'block';
-      cartItems.innerHTML = '';
-      resetPaymentOptions();
+    // Simulate M-Pesa STK Push (replace with actual API call)
+    setTimeout(() => {
+        // Simulate 80% success rate
+        if (Math.random() > 0.2) {
+            mpesaFeedback.innerHTML = `
+                <i class="fas fa-check-circle"></i> M-Pesa payment request sent to ${phone}!
+                <p>Check your phone to complete payment of Ksh ${total.toLocaleString()}</p>
+            `;
+            mpesaFeedback.className = 'payment-feedback payment-success';
+            
+            // Simulate successful payment after 3 seconds
+            setTimeout(() => {
+                completeOrder('M-Pesa', phone);
+            }, 3000);
+        } else {
+            mpesaFeedback.innerHTML = '<i class="fas fa-times-circle"></i> Failed to initiate payment. Please try again.';
+            mpesaFeedback.className = 'payment-feedback payment-error';
+        }
+    }, 2000);
+}
+
+// Process Cash on Delivery
+function processCODPayment() {
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    if (confirm(`Confirm Cash on Delivery order for Ksh ${total.toLocaleString()}? A delivery fee of Ksh 100 will be added.`)) {
+        const deliveryAddress = prompt("Please enter your delivery address:");
+        if (deliveryAddress) {
+            completeOrder('Cash on Delivery', null, deliveryAddress);
+        }
+    }
+}
+
+// Process Card Payment
+function processCardPayment() {
+    const cardNumber = document.getElementById('cardNumber').value;
+    const cardExpiry = document.getElementById('cardExpiry').value;
+    const cardCvv = document.getElementById('cardCvv').value;
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    if (!cardNumber || !cardExpiry || !cardCvv) {
+        cardFeedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please fill in all card details';
+        cardFeedback.className = 'payment-feedback payment-error';
+        cardFeedback.style.display = 'block';
+        return;
     }
     
-    const total = cart.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
-    cartTotal.textContent = `Ksh ${total.toLocaleString()}`;
+    cardFeedback.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing card payment...';
+    cardFeedback.className = 'payment-feedback';
+    cardFeedback.style.display = 'block';
     
-  } catch (error) {
-    console.error('Error updating cart:', error);
-    showToast('Failed to save cart', 'error');
-  }
+    // Simulate card payment processing (replace with actual API call)
+    setTimeout(() => {
+        // Simulate 80% success rate
+        if (Math.random() > 0.2) {
+            cardFeedback.innerHTML = `
+                <i class="fas fa-check-circle"></i> Payment of Ksh ${total.toLocaleString()} successful!
+                <p>Your card ending with ${cardNumber.slice(-4)} has been charged.</p>
+            `;
+            cardFeedback.className = 'payment-feedback payment-success';
+            
+            // Complete order after showing success message
+            setTimeout(() => {
+                completeOrder('Card Payment');
+            }, 2000);
+        } else {
+            cardFeedback.innerHTML = '<i class="fas fa-times-circle"></i> Payment failed. Please check your card details and try again.';
+            cardFeedback.className = 'payment-feedback payment-error';
+        }
+    }, 2000);
 }
-        // Process M-Pesa Payment
-        function processMpesaPayment() {
-            const phone = document.getElementById('mpesaPhone').value;
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
-            if (!phone || phone.length < 10) {
-                mpesaFeedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid M-Pesa phone number (e.g. 0712345678)';
-                mpesaFeedback.className = 'payment-feedback payment-error';
-                mpesaFeedback.style.display = 'block';
-                return;
-            }
-            
-            mpesaFeedback.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initiating M-Pesa payment request...';
-            mpesaFeedback.className = 'payment-feedback';
-            mpesaFeedback.style.display = 'block';
-            
-            // Simulate M-Pesa STK Push (replace with actual API call)
-            setTimeout(() => {
-                // Simulate 80% success rate
-                if (Math.random() > 0.2) {
-                    mpesaFeedback.innerHTML = `
-                        <i class="fas fa-check-circle"></i> M-Pesa payment request sent to ${phone}!
-                        <p>Check your phone to complete payment of Ksh ${total.toLocaleString()}</p>
-                    `;
-                    mpesaFeedback.className = 'payment-feedback payment-success';
-                    
-                    // Simulate successful payment after 3 seconds
-                    setTimeout(() => {
-                        completeOrder('M-Pesa');
-                    }, 3000);
-                } else {
-                    mpesaFeedback.innerHTML = '<i class="fas fa-times-circle"></i> Failed to initiate payment. Please try again.';
-                    mpesaFeedback.className = 'payment-feedback payment-error';
-                }
-            }, 2000);
-        }
-        
-        // Process Cash on Delivery
-        function processCODPayment() {
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
-            if (confirm(`Confirm Cash on Delivery order for Ksh ${total.toLocaleString()}?`)) {
-                completeOrder('Cash on Delivery');
-            }
-        }
-        
-        // Process Card Payment
-        function processCardPayment() {
-            const cardNumber = document.getElementById('cardNumber').value;
-            const cardExpiry = document.getElementById('cardExpiry').value;
-            const cardCvv = document.getElementById('cardCvv').value;
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
-            if (!cardNumber || !cardExpiry || !cardCvv) {
-                cardFeedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please fill in all card details';
-                cardFeedback.className = 'payment-feedback payment-error';
-                cardFeedback.style.display = 'block';
-                return;
-            }
-            
-            cardFeedback.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing card payment...';
-            cardFeedback.className = 'payment-feedback';
-            cardFeedback.style.display = 'block';
-            
-            // Simulate card payment processing (replace with actual API call)
-            setTimeout(() => {
-                // Simulate 80% success rate
-                if (Math.random() > 0.2) {
-                    cardFeedback.innerHTML = `
-                        <i class="fas fa-check-circle"></i> Payment of Ksh ${total.toLocaleString()} successful!
-                        <p>Your card ending with ${cardNumber.slice(-4)} has been charged.</p>
-                    `;
-                    cardFeedback.className = 'payment-feedback payment-success';
-                    
-                    // Complete order after showing success message
-                    setTimeout(() => {
-                        completeOrder('Card Payment');
-                    }, 2000);
-                } else {
-                    cardFeedback.innerHTML = '<i class="fas fa-times-circle"></i> Payment failed. Please check your card details and try again.';
-                    cardFeedback.className = 'payment-feedback payment-error';
-                }
-            }, 2000);
-        }
-        
-        // Complete order after successful payment
-        function completeOrder(paymentMethod) {
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
-            // In a real implementation, you would send the order to your backend
-            console.log(`Order completed via ${paymentMethod} for Ksh ${total}`);
-            
-            // Show confirmation
- 
-// Calculate delivery fee
-const deliveryFee = paymentMethod === 'Cash on Delivery' ? 100 : 0;
-const finalTotal = total + deliveryFee;
 
-// Order confirmation alert with delivery fee info
+// Complete order after successful payment
+function completeOrder(paymentMethod, phone = null, deliveryAddress = "N/A") {
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const deliveryFee = paymentMethod === 'Cash on Delivery' ? 100 : 0;
+    const finalTotal = total + deliveryFee;
+    
+    // Prepare order data
+    const order = {
+        id: "ORD" + Date.now().toString().slice(-6),
+        date: new Date().toLocaleString(),
+        paymentMethod: paymentMethod,
+        subtotal: total,
+        deliveryFee: deliveryFee,
+        finalTotal: finalTotal,
+        items: cart.map(item => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+        })),
+        user: {
+            phone: phone || 'N/A',
+            deliveryAddress: deliveryAddress
+        }
+    };
+    
+    // Show confirmation
+    showOrderConfirmation(order);
+    
+    // Generate receipt
+    generateReceipt(order);
+    
+    // Reset cart and UI
+    resetCheckoutUI();
+}
 
-  // Show order confirmation alert
-  function showOrderConfirmation(orderData) {
-    alert(`Order confirmed!\n\nSubtotal: Ksh ${orderData.subtotal.toLocaleString()}\n${
+// Show order confirmation alert
+function showOrderConfirmation(orderData) {
+    alert(`Order confirmed!\n\nOrder ID: ${orderData.id}\nSubtotal: Ksh ${orderData.subtotal.toLocaleString()}\n${
       orderData.deliveryFee > 0 ? 'Delivery Fee: Ksh 100\n' : ''
     }Total: Ksh ${orderData.finalTotal.toLocaleString()}\nPayment Method: ${
       orderData.paymentMethod
     }\n\nThank you for shopping with us!`);
-  }
+}
 
-  // Send order to backend
-  async function sendOrderToBackend(orderData) {
-    try {
-      console.log('Sending order to backend:', orderData);
-      
-      // In a real implementation, this would be a fetch call to your backend API
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
-        body: JSON.stringify(orderData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server responded with status ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Failed to send order:', error);
-      throw error;
-    }
-  }
-
-  // Reset checkout UI
-  function resetCheckoutUI() {
-    cart = [];
-    updateCart();
-    if (cartModal) cartModal.style.display = 'none';
-    resetPaymentOptions();
-  }
-
-  // Generate receipt
-  function generateReceipt(order) {
+// Generate receipt
+function generateReceipt(order) {
     const receiptWindow = window.open('', '_blank', 'width=800,height=900');
     
     receiptWindow.document.write(`
@@ -677,8 +566,8 @@ const finalTotal = total + deliveryFee;
 
           <section class="info">
             <div class="details">
-              <p>Date : ${new Date().toLocaleString()}</p>
-              <p>Order # : ${order.id}</p>
+              <p>Date: ${order.date}</p>
+              <p>Order #: ${order.id}</p>
               <hr>
               <div class="product-info">
                 <table>
@@ -714,7 +603,6 @@ const finalTotal = total + deliveryFee;
               </div>
               <p>Payment Method: ${order.paymentMethod}</p>
               <p>Customer: ${order.user.phone}</p>
-              
               <p>Delivery Address: ${order.user.deliveryAddress}</p>
             </div>
           </section>
@@ -734,45 +622,15 @@ const finalTotal = total + deliveryFee;
     `);
     
     receiptWindow.document.close();
-  }
+}
 
+// Reset checkout UI
+function resetCheckoutUI() {
+    cart = [];
+    updateCart();
+    if (cartModal) cartModal.style.display = 'none';
+    resetPaymentOptions();
+}
 
-// Prepare order data
-const order = {
-  id: "ORD" + Date.now().toString().slice(-6),
-  paymentMethod: paymentMethod,
-  total: total,
-  deliveryFee: deliveryFee,
-  finalTotal: finalTotal,
-  items: cart.map(item => ({
-    name: item.name,
-    quantity: item.quantity,
-    price: item.price,
-    phone: phone,
-    deliveryAddress: deliveryAddress,
-
-  }))
-};
-
-// Generate receipt
-generateReceipt(order);
-
-// Reset cart and close modal
-
-cart = [];
-updateCart();
-cartModal.style.display = 'none';
-resetPaymentOptions();
-            // Reset cart and close modal
-            cart = [];
-            updateCart();
-            cartModal.style.display = 'none';
-            resetPaymentOptions();
-        }
-        
-        // Initialize the store when DOM is loaded
-       document.addEventListener('DOMContentLoaded', initStore);
-
-
-
-
+// Initialize the store when DOM is loaded
+document.addEventListener('DOMContentLoaded', initStore);
