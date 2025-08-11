@@ -5,8 +5,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "preinstall": "npm install --build-from-source=sqlite3",
-    "postinstall": "npm rebuild sqlite3 --build-from-source --update-binary",
+    "preinstall": "npm rebuild sqlite3 --build-from-source",
+     "postinstall": "npm rebuild sqlite3 --build-from-source",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
